@@ -4,7 +4,7 @@
 
 ## 安装与更新
 
-见[仓库首页](../../README.md)。MuseScore 直接扫描 Git 工作副本中的实际 `plugins` 目录；按仓库首页的一次性设置启用后台自动更新；每 5 分钟检查，MuseScore 关闭时同步，重开使用新版。也可手动运行 `update.command`。
+见[仓库首页](../../README.md)。MuseScore 直接扫描 Git 工作副本中的实际 `plugins` 目录；GitHub 有更新后，运行 git pull 或 update.command 同步本地文件，重开 MuseScore 使用新版。没有定时任务或额外启动入口。
 
 ## 自动建谱
 

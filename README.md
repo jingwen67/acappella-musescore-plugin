@@ -24,15 +24,22 @@ git clone --branch main --single-branch https://github.com/jingwen67/acappella-m
 
 不要复制或建立软链接。保存设置，在首页 Plugins 点击 Reload plugins，启用「阿卡贝拉编曲助手 · Jingwen」。必要时完全退出再重新打开 MuseScore。
 
-## 更新
+## 自动更新（Mac，设置一次）
 
-关闭 MuseScore，双击 `plugins/acappella-arranger/update.command`，或运行：
+先关闭 MuseScore，在终端运行一次：
 
 ```bash
 git -C "$HOME/Documents/CUCAC-Plugins/acappella-musescore-plugin" pull --ff-only
+bash "$HOME/Documents/CUCAC-Plugins/acappella-musescore-plugin/enable-auto-update.command"
 ```
 
-重开 MuseScore 即使用最新版。更新会同步当前实际安装的代码，无需复制文件，不会自动丢弃本地修改。
+之后登录 Mac 时后台任务自动启动，每 5 分钟检查一次；MuseScore 运行时暂不更新，关闭后下次检查同步。以后不用双击更新文件。新版本同步后，重新打开 MuseScore 加载。
+
+只更新本仓库的 main 分支，使用快进合并；有本地修改、冲突或离线时跳过／等待，不会自动丢弃文件。后台任务仅更新 Git 工作副本，不修改乐谱和 MuseScore 设置。仓库路径移动后需在新位置重新启用。
+
+关闭自动更新：运行仓库根目录的 `disable-auto-update.command`。
+
+仍可手动运行 `plugins/acappella-arranger/update.command` 或 `git pull --ff-only`。后台自动更新只支持 macOS；首次安装与后台权限需在实际 Mac 上确认。
 
 [功能说明与音域表](plugins/acappella-arranger/README.md)
 

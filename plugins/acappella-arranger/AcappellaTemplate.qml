@@ -7,15 +7,12 @@ import FileIO 3.0
 import "Template.js" as Template
 import "RangeScan.js" as RangeScan
 import "CreateFlow.js" as CreateFlow
-import "BassHarmony.js" as BassHarmony
-import "BassScore.js" as BassScore
-import "PatternScore.js" as PatternScore
 
 MuseScore {
     id: root
     title: "阿卡贝拉编曲助手 · Jingwen"
-    description: "Create a cappella scores, check vocal ranges and voice chords from an existing bass line."
-    version: "0.8.1"
+    description: "Create a cappella scores and check vocal ranges."
+    version: "0.9.0"
     menuPath: "Plugins.Acappella Arranger - Jingwen"
     pluginType: "dialog"
     requiresScore: false
@@ -28,7 +25,6 @@ MuseScore {
     onRun: {
         status.text = "选择声部后创建新谱。";
         root.syncSoloRanges();
-        root.refreshBassSources();
         if (curScore) root.runRange('check');
     }
 
@@ -82,17 +78,17 @@ MuseScore {
                 if (typeof api !== 'undefined' && api.launcher && typeof api.launcher.open === 'function')
                     launcher = api.launcher;
             } catch (navigationError) {
-                console.log('[Jingwen 0.8.1] Automatic score navigation unavailable');
+                console.log('[Jingwen 0.9.0] Automatic score navigation unavailable');
             }
             status.text = '正在关闭助手并创建新谱…';
             CreateFlow.run(assistantWindow,
                 function() { root.quit(); },
                 function(info) { return model.createScore(info); },
-                createInfo, function(stage) { console.log('[Jingwen 0.8.1] ' + stage); },
+                createInfo, function(stage) { console.log('[Jingwen 0.9.0] ' + stage); },
                 launcher ? function() { return launcher.open('musescore://notation'); } : null);
             // Do not access the closing UI or schedule work after this call.
         } catch(error) {
-            console.error('[Jingwen 0.8.1] 创建失败：' + error.message);
+            console.error('[Jingwen 0.9.0] 创建失败：' + error.message);
             if (root.Window.window && root.Window.window.visible) {
                 status.text='创建失败：'+error.message;
                 busy=false;
@@ -103,7 +99,7 @@ MuseScore {
         }
     }
 
-    TabBar { id: featureTabs; anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 12; TabButton { text: "建谱" } TabButton { text: "音域检查" } TabButton { text: "Bass 配和弦" } TabButton { text: "节奏样例" } }
+    TabBar { id: featureTabs; anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right; anchors.margins: 12; TabButton { text: "建谱" } TabButton { text: "音域检查" } }
 
     ScrollView {
         visible: featureTabs.currentIndex === 0
@@ -117,7 +113,7 @@ MuseScore {
             width: 430
             spacing: 10
             Label { text: "阿卡贝拉编曲助手 · Jingwen"; font.pixelSize: 23 }
-            Label { text: "v0.8.1 · 一键建谱" }
+            Label { text: "v0.9.0 · 一键建谱" }
             Label { text: "谱名" }
             TextField { id: scoreTitle; text: "A Cappella"; Layout.fillWidth: true }
             Label { text: "编曲者（可留空）" }
@@ -280,119 +276,4 @@ MuseScore {
 
 
 
-    property var bassSources: []
-    property var bassSlots: []
-    property string bassSnapshot: ''
-    ListModel { id:bassRows }
-    function refreshBassSources() {
-        var rows=[];
-        if(curScore)for(var i=0;i<curScore.nstaves;i++)rows.push((i+1)+'. '+String(curScore.staves[i].part.longName || curScore.staves[i].part.partName).replace(/<[^>]*>/g,''));
-        if(JSON.stringify(rows)!==JSON.stringify(bassSources))bassSources=rows;
-    }
-    function bassRead() {
-        if(!curScore)throw new Error('请先打开谱子并写好 Bass。');
-        return BassScore.read(curScore,{chord:Element.CHORD,rest:Element.REST,harmony:Element.HARMONY},
-            bassSource.currentIndex-1,soloSource.currentIndex===0?-1:soloSource.currentIndex===1?-2:soloSource.currentIndex-2,
-            division,function(tick){return root.fractionFromTicks(tick);});
-    }
-    function analyzeBass() {
-        if(busy || rangeBusy)return;
-        busy=true;
-        try {
-            refreshBassSources();
-            var data=bassRead(),slots=BassHarmony.analyze(data,bassMode.currentIndex===1,division);
-            bassRows.clear();
-            for(var i=0;i<slots.length;i++) {
-                var names=slots[i].choices.map(function(c){return c.label+(c.melodyConflict?'（旋律需核对）':'');});
-                bassRows.append({caption:'第 '+slots[i].measure+' 小节 · 拍位 '+slots[i].position,choices:JSON.stringify(names),choiceIndex:0});
-            }
-            bassSlots=slots;bassSnapshot=data.snapshot;
-            bassStatus.text='已列出 '+slots.length+' 个和弦位置。低音不能唯一确定和弦，请确认候选；有 Solo 时会参考长音与分段起始音。';
-        } catch(error){bassRows.clear();bassSlots=[];bassStatus.text=error.message;}
-        finally{busy=false;}
-    }
-    function generateBassHarmony(chordOnly) {
-        if(busy || rangeBusy)return;
-        busy=true;
-        try {
-            var data=bassRead();
-            if(data.snapshot!==bassSnapshot)throw new Error('Bass、Solo 或选区已改变，请重新分析。');
-            var chosen=[];for(var i=0;i<bassRows.count;i++)chosen.push(bassRows.get(i).choiceIndex);
-            var result=BassScore.generate(curScore,data,bassSlots,chosen,
-                {chord:Element.CHORD,rest:Element.REST,chordRest:Segment.ChordRest,harmony:Element.HARMONY},
-                division,function(tick){return root.fractionFromTicks(tick);},function(type){return root.newElement(type);},chordOnly);
-            bassStatus.text=chordOnly?'已添加 '+result.symbolCount+' 个和弦符号（已有符号保留），未生成伴唱。现在可以写节奏样例，再补全后续空白小节。':'已写入 '+result.written+' 段伴唱，跳过 '+result.protectedCount+' 个有内容的位置。关闭助手播放试听；⌘Z 撤销后可更换候选。';
-        } catch(error){bassStatus.text='未完成：'+error.message;}
-        finally{busy=false;}
-    }
-    ScrollView {
-        visible:featureTabs.currentIndex===2
-        anchors.top:featureTabs.bottom;anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
-        anchors.margins:20;clip:true
-        ColumnLayout {
-            width:430;spacing:12
-            Label { text:'根据 Bass 配和弦';font.pixelSize:22 }
-            Label { text:'先写 Bass，再分析候选、确认和弦并生成长音伴唱。4/4 的第一、第三拍和 6/8 的两个大拍都会检查；Bass 与 Solo 音符保留。';Layout.fillWidth:true;wrapMode:Text.Wrap }
-            Label { text:'没有范围选区时处理全谱；已有伴唱音符不会被覆盖。' ;Layout.fillWidth:true;wrapMode:Text.Wrap }
-            Label { text:'低音来源' }
-            ComboBox { id:bassSource;model:['自动（Bass）'].concat(root.bassSources);Layout.fillWidth:true;enabled:!root.busy }
-            Label { text:'旋律参考（第一音轨）' }
-            ComboBox { id:soloSource;model:['自动（首个 Solo）','不使用 Solo'].concat(root.bassSources);Layout.fillWidth:true;enabled:!root.busy }
-            ComboBox { id:bassMode;model:['按调号的大调','按调号的小调'];Layout.fillWidth:true;enabled:!root.busy;onActivated:{bassRows.clear();root.bassSlots=[];} }
-            Button { text:'分析 Bass 与候选和弦';Layout.fillWidth:true;enabled:!root.busy && !root.rangeBusy;onClicked:root.analyzeBass() }
-            Repeater {
-                model:bassRows
-                ColumnLayout {
-                    id:bassRow
-                    property int rowNumber:index
-                    Layout.fillWidth:true
-                    Label { text:caption }
-                    ComboBox { model:JSON.parse(choices);currentIndex:choiceIndex;Layout.fillWidth:true;enabled:!root.busy;onActivated:bassRows.setProperty(bassRow.rowNumber,'choiceIndex',currentIndex) }
-                }
-            }
-            Button { text:'只写和弦符号（供节奏补全）';Layout.fillWidth:true;enabled:bassRows.count>0 && !root.busy && !root.rangeBusy;onClicked:root.generateBassHarmony(true) }
-            Button { text:'按所选和弦生成伴唱';Layout.fillWidth:true;enabled:bassRows.count>0 && !root.busy && !root.rangeBusy;onClicked:root.generateBassHarmony() }
-            Label { id:bassStatus;text:'仅支持基础三和弦、属七和弦与转位。候选不是唯一答案；不确定时先试听。';Layout.fillWidth:true;wrapMode:Text.Wrap }
-        }
-    }
-
-    property var rhythmTemplate: null
-    function rememberPattern() {
-        if(busy || rangeBusy)return;
-        busy=true;
-        try {
-            if(!curScore)throw new Error('请先打开谱子。');
-            rhythmTemplate=PatternScore.capture(curScore,{chord:Element.CHORD,rest:Element.REST},
-                bassSource.currentIndex-1,soloSource.currentIndex===0?-1:soloSource.currentIndex===1?-2:soloSource.currentIndex-2,
-                division,function(tick){return root.fractionFromTicks(tick);});
-            patternStatus.text='已记录 '+rhythmTemplate.bars.length+' 小节、'+rhythmTemplate.targets.length+' 个伴唱声部的节奏。可选择补全范围，或直接补全样例后面的空白小节。';
-        } catch(error){rhythmTemplate=null;patternStatus.text=error.message;}
-        finally{busy=false;}
-    }
-    function fillPattern() {
-        if(busy || rangeBusy || !rhythmTemplate)return;
-        busy=true;
-        try {
-            if(!curScore)throw new Error('请先打开谱子。');
-            var result=PatternScore.generate(curScore,rhythmTemplate,{chord:Element.CHORD,rest:Element.REST,harmony:Element.HARMONY,all:Segment.All,chordRest:Segment.ChordRest},
-                division,function(tick){return root.fractionFromTicks(tick);});
-            patternStatus.text='已补全 '+result.written+' 段音符，跳过 '+result.skipped+' 个已有内容的位置。Bass、Solo 和样例保留；⌘Z 可撤销。';
-        } catch(error){patternStatus.text='未完成：'+error.message;}
-        finally{busy=false;}
-    }
-    ScrollView {
-        visible:featureTabs.currentIndex===3
-        anchors.top:featureTabs.bottom;anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
-        anchors.margins:20;clip:true
-        ColumnLayout {
-            width:430;spacing:12
-            Label { text:'按节奏样例补全';font.pixelSize:22 }
-            Label { text:'在伴唱声部写好 1–16 个小节，用蓝色范围选框选中，再记录样例。各声部可用不同节奏；只补全样例中有音符的声部。';Layout.fillWidth:true;wrapMode:Text.Wrap }
-            Label { text:'后续 Bass 和 Bass 谱表上的和弦符号需写好。只取样例节奏，不复制原音高、歌词或力度；按后续和弦重新配音，并保持伴唱高于 Bass。';Layout.fillWidth:true;wrapMode:Text.Wrap }
-            Label { text:'来源沿用「Bass 配和弦」页的 Bass／Solo 设置。目标拍号需与循环中对应样例一致；暂不支持连音和复合延音时值。';Layout.fillWidth:true;wrapMode:Text.Wrap;font.pixelSize:12 }
-            Button { text:'记录所选小节的节奏样例';Layout.fillWidth:true;enabled:!root.busy && !root.rangeBusy;onClicked:root.rememberPattern() }
-            Button { text:'按和弦补全空白小节';Layout.fillWidth:true;enabled:root.rhythmTemplate!==null && !root.busy && !root.rangeBusy;onClicked:root.fillPattern() }
-            Label { id:patternStatus;text:'保留样例选区时补全样例后面的剩余小节；另选范围时只补全所选小节。已有伴唱不会被覆盖，需要替换上一版时先撤销。';Layout.fillWidth:true;wrapMode:Text.Wrap }
-        }
-    }
 }

@@ -1,4 +1,4 @@
-# 阿卡贝拉编曲助手 v0.8.0（试用版）
+# 阿卡贝拉编曲助手 v0.8.1（试用版）
 
 功能：原生一键建谱、按 Workshop 手册检查声部音域，以及根据已写好的 Bass 选择和弦并分配伴唱。本版针对 MuseScore Studio 4.7.5，使用其内部 NewScoreModel 原生建谱模型。它不是稳定的公开插件接口，其他版本不能保证兼容；4.7 以下不支持本版。
 
@@ -13,11 +13,9 @@
 
 ## Mac 安装
 
-1. 解压 ZIP，将整个 `acappella-arranger-v0.1` 文件夹放进 MuseScore 的插件目录。通常是 `~/Documents/MuseScore4/Plugins/`，准确路径以 MuseScore「设置／偏好设置 → 文件夹 → 插件」为准。
-2. 保持文件夹完整（含 QML、Template.js、NativeInstruments.js、RangeScan.js、CreateFlow.js、BassHarmony.js、BassScore.js、BassVoicing.js、BassWrite.js），不要只复制 QML 文件。
-3. 重启 MuseScore，在首页「插件／Plugins」中找到并启用 **阿卡贝拉编曲助手 · Jingwen**。如果提供重新扫描选项，也可使用它。
-4. 从「插件／Plugins」菜单运行插件，选好声部后点击「创建新谱」。
-5. 点击创建后，助手自动关闭并打开未保存的新谱；直接输入音符，需要保留时再按 `⌘S` 保存成 `.mscz`。
+推荐使用下文「GitHub 安装与更新」：MuseScore 直接扫描 Git 工作副本中的实际 plugins 文件夹。无需复制或软链接。
+
+创建新谱时，助手先关闭，再创建未保存的新谱。若未自动跳转，请点击顶部 Score／乐谱；需要保留时按 ⌘S 保存。
 
 通过 MuseScore 的原生“从模板创建新谱”流程创建未保存新谱。内部在系统临时目录生成一个 MuseScore 原生 MSCX 模板，但不作为普通文件打开，不显示 MusicXML 文件名，也不调用普通文件导入流程；不自动保存 .mscz。曲名用于新谱标题和首次保存的默认名称。旧版导入产生的最近记录不会自动清除；可用「文件 → 打开最近 → 清除最近文件」手动清除全部记录，实际谱文件不受影响。
 
@@ -44,31 +42,30 @@
 
 ## GitHub 安装与更新（推荐）
 
-插件源码放在 `jingwen67/acappella-musescore-plugin` 的 `plugins/acappella-arranger/`，使用 `main` 分支维护。它是独立的桌面插件，不属于 Hub 网页功能。
-
-首次在 Mac 终端运行（需要已安装 Git）：
+首次安装，Mac 终端运行（需要 Git）：
 
 ```bash
 mkdir -p "$HOME/Documents/CUCAC-Plugins"
 git clone --branch main --single-branch https://github.com/jingwen67/acappella-musescore-plugin.git "$HOME/Documents/CUCAC-Plugins/acappella-musescore-plugin"
-mkdir -p "$HOME/Documents/MuseScore4/Plugins"
-ln -s "$HOME/Documents/CUCAC-Plugins/acappella-musescore-plugin/plugins/acappella-arranger" "$HOME/Documents/MuseScore4/Plugins/AcappellaArranger"
 ```
 
-如 MuseScore 的插件目录不同，将最后两行的 `MuseScore4/Plugins` 替换成设置中的实际目录。
+已有这个仓库时不用再次 clone，只需运行下文的更新命令。
 
-若已有 ZIP 安装版，请先把旧的 `acappella-arranger-v0.1` 文件夹移出 Plugins，避免显示两个插件。上面的链接不会覆盖已有的同名文件夹；若 `AcappellaArranger` 已存在，先检查它的来源。
+1. MuseScore → Settings／设置 → Folders／文件夹 → Plugins，选择仓库中的实际 `plugins` 文件夹：
+   `/Users/你的用户名/Documents/CUCAC-Plugins/acappella-musescore-plugin/plugins`。
+2. 目录必须选到 `plugins`，其下有 `acappella-arranger` 文件夹。不要选旧的链接目录或复制版目录。
+3. 保存设置，在首页 Plugins 点击 **Reload plugins**，找到并启用「阿卡贝拉编曲助手 · Jingwen」。必要时按 ⌘Q 完全退出再打开。
+4. 打开助手，确认显示 v0.8.1 或更新版本。
 
-以后更新只需双击仓库插件文件夹中的 `update.command`。它只使用 `git pull --ff-only` 同步这个本地副本，不会自动丢弃本地修改。也可以在终端运行：
+MuseScore 读取的就是 GitHub 本地工作副本。以后关闭 MuseScore，双击仓库内 `plugins/acappella-arranger/update.command`，或运行：
 
 ```bash
 git -C "$HOME/Documents/CUCAC-Plugins/acappella-musescore-plugin" pull --ff-only
 ```
 
-更新后关闭插件窗口再重新运行；若 MuseScore 仍加载旧版，重启 MuseScore。新增插件入口时需重新扫描或重启并启用。更新插件代码不需要重新配置上述链接。
+更新后重开 MuseScore，无需重新复制、下载 ZIP 或设置目录。更新是主动运行的操作，不会在写谱期间自动替换代码；本地有冲突时不会自动丢弃修改。
 
-若终端提示需要安装命令行开发者工具，先按 macOS 提示安装 Git。`update.command` 因系统设置无法双击执行时，可以右键打开，或直接使用上面的终端命令。
-
+若从旧复制版迁移：把 Plugins 扫描路径切换成上面的实际仓库路径即可，旧安装文件先保留。如果列表仍有两个助手，只启用新路径的版本；旧目录可在确认新版本正常后整理。其他自装插件如需一起使用，可在确认备份后放进同一实际扫描目录，避免同名助手重复安装。
 
 ## v0.2.2：多个 Solo 与音域检查
 

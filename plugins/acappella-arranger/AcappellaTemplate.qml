@@ -15,7 +15,7 @@ MuseScore {
     id: root
     title: "阿卡贝拉编曲助手 · Jingwen"
     description: "Create a cappella scores, check vocal ranges and voice chords from an existing bass line."
-    version: "0.8.0"
+    version: "0.8.1"
     menuPath: "Plugins.Acappella Arranger - Jingwen"
     pluginType: "dialog"
     requiresScore: false
@@ -77,18 +77,22 @@ MuseScore {
             var assistantWindow = root.Window.window;
             var model = nativeModel;
             // Capture the application-owned launcher before closing this host.
-            var launcher = typeof api !== 'undefined' ? api.launcher : null;
-            if (!launcher || typeof launcher.open !== 'function')
-                throw new Error('无法连接 MuseScore 乐谱页面，请重启 MuseScore 后重试。');
+            var launcher = null;
+            try {
+                if (typeof api !== 'undefined' && api.launcher && typeof api.launcher.open === 'function')
+                    launcher = api.launcher;
+            } catch (navigationError) {
+                console.log('[Jingwen 0.8.1] Automatic score navigation unavailable');
+            }
             status.text = '正在关闭助手并创建新谱…';
             CreateFlow.run(assistantWindow,
                 function() { root.quit(); },
                 function(info) { return model.createScore(info); },
-                createInfo, function(stage) { console.log('[Jingwen 0.8.0] ' + stage); },
-                function() { return launcher.open('musescore://notation'); });
+                createInfo, function(stage) { console.log('[Jingwen 0.8.1] ' + stage); },
+                launcher ? function() { return launcher.open('musescore://notation'); } : null);
             // Do not access the closing UI or schedule work after this call.
         } catch(error) {
-            console.error('[Jingwen 0.8.0] 创建失败：' + error.message);
+            console.error('[Jingwen 0.8.1] 创建失败：' + error.message);
             if (root.Window.window && root.Window.window.visible) {
                 status.text='创建失败：'+error.message;
                 busy=false;
@@ -113,7 +117,7 @@ MuseScore {
             width: 430
             spacing: 10
             Label { text: "阿卡贝拉编曲助手 · Jingwen"; font.pixelSize: 23 }
-            Label { text: "v0.8.0 · 一键建谱" }
+            Label { text: "v0.8.1 · 一键建谱" }
             Label { text: "谱名" }
             TextField { id: scoreTitle; text: "A Cappella"; Layout.fillWidth: true }
             Label { text: "编曲者（可留空）" }

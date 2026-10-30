@@ -15,8 +15,17 @@ function run(window, closeAssistant, createScore, info, log, showScore) {
     log('score created');
     if (showScore) {
         log('opening score page');
-        if (!showScore())throw new Error('新谱已创建，但未能切换乐谱页面。请点击顶部 Score／乐谱。');
-        log('score page requested');
+        try {
+            if (showScore() === false) {
+                log('score created; select Score / 乐谱 manually');
+                return;
+            }
+            log('score page requested');
+        } catch (navigationError) {
+            // Creation succeeded. Navigation is optional and must not report failure
+            // or encourage another click that creates a duplicate score.
+            log('score created; select Score / 乐谱 manually');
+        }
     }
 }
 

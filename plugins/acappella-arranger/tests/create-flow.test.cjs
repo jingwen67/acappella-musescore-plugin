@@ -6,7 +6,11 @@ flow.run(window,()=>{order.push('close');window.visible=false},()=>{assert.equal
 assert.deepEqual(order,['close','create','notation']);
 order=[];window={visible:true};assert.throws(()=>flow.run(window,()=>{},()=>{order.push('create');return true},{},()=>{},()=>{order.push('notation');return true}),/尚未关闭/);assert.deepEqual(order,[]);
 window={visible:true};assert.throws(()=>flow.run(window,()=>{window.visible=false},()=>false,{},()=>{},()=>{throw Error('must not navigate')}),/未能/);
-window={visible:true};assert.throws(()=>flow.run(window,()=>{window.visible=false},()=>true,{},()=>{},()=>false),/新谱已创建/);
+for (const navigate of [null,()=>false,()=>{throw Error('navigation unavailable')}]) {
+    window={visible:true};let created=0;
+    assert.doesNotThrow(()=>flow.run(window,()=>{window.visible=false},()=>{created++;return true},{},()=>{},navigate));
+    assert.equal(created,1);
+}
 const qml=fs.readFileSync(path.join(__dirname,'..','AcappellaTemplate.qml'),'utf8'),begin=qml.indexOf('    function createTemplate()'),end=qml.indexOf('    TabBar',begin);
 order=[];window={visible:true};
 const context={busy:false,rangeBusy:false,mscoreMajorVersion:4,mscoreMinorVersion:7,
@@ -21,3 +25,12 @@ const context={busy:false,rangeBusy:false,mscoreMajorVersion:4,mscoreMinorVersio
 context.root=context;vm.createContext(context);vm.runInContext(qml.slice(begin,end),context);context.createTemplate();
 assert.deepEqual(order,['close','create','notation']);
 console.log('PASS close/create/navigate order, failed creation never navigates, synchronous native QML handler and application-owned launcher. Real desktop switching untested.');
+
+for (const missingApi of [undefined,{}, {launcher:{}}]) {
+    order=[];window={visible:true};context.Window.window=window;context.api=missingApi;context.busy=false;context.nativeModel=null;
+    context.createTemplate();assert.deepEqual(order,['close','create']);
+}
+context.api={};order=[];window={visible:true};context.Window.window=window;context.busy=false;context.nativeModel=null;
+Object.defineProperty(context.api,'launcher',{get(){throw Error('API unavailable')}});
+context.createTemplate();assert.deepEqual(order,['close','create']);
+console.log('PASS missing/throwing launcher does not block score creation; no duplicate creation on navigation failure.');
